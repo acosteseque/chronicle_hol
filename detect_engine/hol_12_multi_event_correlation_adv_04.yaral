@@ -1,0 +1,21 @@
+rule hol_12_multi_event_correlation_adv_04 {
+  meta:
+    author = "Google Cloud Security"
+    description = "Office Application downloading an executable(.exe in URL) or a suspiciously large file(>100KB)"
+    reference = "https://attack.mitre.org/software/S0160/"
+    severity = "High"
+
+  events:
+    $edr_event.target.process.file.full_path = /.*EXCEL.*/
+    $edr_event.principal.hostname = $hostname
+
+    $proxy_event.target.url = /.*\.exe$/ or
+    $proxy_event.network.received_bytes > 102400
+    $proxy_event.principal.hostname = $hostname
+
+  match:
+    $hostname over 5m
+
+  condition:
+    $edr_event and $proxy_event
+}

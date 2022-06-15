@@ -1,0 +1,33 @@
+rule tp_prod_ioc_hostname_from_dns_query_graph {
+  meta:
+    author = "Cymbal Labs"
+    description = "Match Cymbal Threat Co IOCs against DNS query (DNS) responses."
+    severity = "Medium"
+
+  events:
+    $dns.metadata.event_type = "NETWORK_DNS"
+    $dns.metadata.vendor_name = "Cymbal"
+    $dns.metadata.product_name = "DNS"
+    $dns.metadata.product_event_type = "query"
+    //match variables
+    //$dns.principal.hostname = $hostname
+    $dns.network.dns.questions.name = $hostname
+
+    // only match IOC during active duration
+    $dns.metadata.event_timestamp.seconds > 
+        $ioc.graph.metadata.interval.start_time.seconds 
+
+    $dns.metadata.event_timestamp.seconds <
+        $ioc.graph.metadata.interval.end_time.seconds
+
+    $ioc.graph.metadata.vendor_name = "Cymbal Threat Co"
+    $ioc.graph.metadata.product_name = "Cymbal Intel"
+    $ioc.graph.metadata.entity_type = "DOMAIN_NAME"
+    $ioc.graph.entity.hostname = $hostname
+
+  match:
+    $hostname over 15m
+
+  condition:
+    $dns and $ioc
+}

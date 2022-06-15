@@ -1,0 +1,27 @@
+rule hol_21_threat_perception_context_ioc {
+  meta:
+	author = "Raju"
+    description = ""
+    severity = "Medium"
+
+  events:
+    // Outbound network connection
+    (
+        $network.metadata.event_type = "NETWORK_CONNECTION" or 
+        $network.metadata.event_type = "NETWORK_HTTP"
+    )
+    $network.network.direction = "OUTBOUND"
+    $network.principal.hostname = $hostname
+    $network.target.hostname = $outbound_domain
+
+    // Known C&C Domain
+    $ioc.graph.metadata.entity_type = "DOMAIN_NAME"
+    $ioc.graph.entity.hostname = $outbound_domain
+    $ioc.graph.metadata.threat.severity = "HIGH"
+
+  match:
+    $outbound_domain over 5m
+
+  condition:
+    $network and $ioc
+}

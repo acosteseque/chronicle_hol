@@ -1,0 +1,34 @@
+rule hol_09_multi_event_correlation_adv_01 {
+  meta:
+	  author = "Raju"
+    description = ""
+    severity = "Medium"
+
+  events:
+    // Case Sensitivity
+    // Boolean Operations
+    // Whitelisting - Using AND, OR and NOT operators
+    // String concatenation / casing
+    // Regex
+    // Regex Capture Function
+    // Regex Replace Function
+    // Timestamp Functions
+    // Math Functions
+    // Reference Lists in Rules
+    // Repeated fields
+    // Sliding windows
+    // Outcome section
+    $e1.metadata.event_type="NETWORK_DNS"
+    $e1.network.dns.questions.name=$url
+    $e1.principal.ip = $ip
+
+    $e2.metadata.event_type="NETWORK_HTTP"
+    $e2.principal.ip = $ip
+    $e2.target.hostname=$url
+
+  match:
+    $ip, $url over 5m after $e1
+
+  condition:
+    $e1 and !$e2
+}

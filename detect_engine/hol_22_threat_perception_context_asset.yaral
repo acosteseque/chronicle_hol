@@ -1,0 +1,23 @@
+rule hol_22_threat_perception_context_asset {
+  meta:
+	author = "Raju"
+    description = ""
+    severity = "Medium"
+
+  events:
+    $login.metadata.event_type = "USER_LOGIN"
+    $login.principal.user.email_addresses = $user
+    $login.target.hostname = $dc_host
+
+    // Domain Controller
+    $asset_context.graph.metadata.entity_type = "ASSET"
+    $asset_context.graph.entity.asset.hostname = $dc_host
+    $asset_context.graph.relations.entity_type = "GROUP"
+    $asset_context.graph.relations.entity.group.group_display_name = "Domain Controllers"
+
+  match:
+    $dc_host over 5m
+
+  condition:
+    $login and $asset_context
+}

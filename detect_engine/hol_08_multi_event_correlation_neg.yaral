@@ -1,0 +1,21 @@
+rule hol_08_multi_event_correlation_neg {
+  meta:
+	  author = "Raju"
+    description = "Non-existence (Negative) Correlation - Sequences"
+    severity = "Medium"
+
+  events:
+    $e1.metadata.event_type="NETWORK_DNS"
+    $e1.network.dns.questions.name=$url
+    $e1.principal.ip = $ip
+
+    $e2.metadata.event_type="NETWORK_HTTP"
+    $e2.principal.ip = $ip
+    $e2.target.hostname=$url
+
+  match:
+    $ip, $url over 5m after $e1
+
+  condition:
+    $e1 and !$e2
+}

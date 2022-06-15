@@ -1,0 +1,40 @@
+rule hol_11_multi_event_correlation_adv_03 {
+  meta:
+    author = "svetlay@google.com"
+    description = "A successful low prevalence ssh connection from a non PCI environment to a PCI environment"
+    severity = "Critical"
+
+  events:
+    // We're looking for an SSH type of Network Connection...
+    $ssh_connection.metadata.event_type = "NETWORK_CONNECTION"
+    $ssh_connection.metadata.product_event_type = "ssh"
+
+    // Allowed connections only
+    $ssh_connection.security_result.action = "ALLOW"
+
+    // From a "non-sensitive" asset...
+    $ssh_connection.principal.hostname = $source_host
+    not $ssh_connection.principal.labels.value in %sensitive_labels
+    
+    // Going to a "sensitive" asset...
+    $ssh_connection.target.hostname = $dest_host
+    $ssh_connection.target.hostname != /test/
+    $ssh_connection.target.labels.value in %sensitive_labels
+
+ 
+  match:
+    // Unique connection in the last day
+    $source_host, $dest_host over 24h
+
+  outcome: 
+    $risk_score = sum(
+      if ($ssh_connection.target.labels.value = "PCI", 40) + 
+      if ($ssh_connection.target.labels.value = "ITAR", 50) + 
+      if ($ssh_connection.target.labels.value = "SuperSecretSauce", 30) + 
+      if ($ssh_connection.target.labels.value = "ArguablyTheMostSecretOfSauces", 100) 
+    )
+
+  condition:
+    // Then, trigger a detection if there are one or more of these connections. 
+    #ssh_connection = 1
+}

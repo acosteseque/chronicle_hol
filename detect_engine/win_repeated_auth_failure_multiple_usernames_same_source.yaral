@@ -1,0 +1,42 @@
+rule win_repeated_auth_failure_multiple_usernames_same_source {
+  meta:
+    description = "Detects repeated authentication failures for the multiple usernames, grouped by the source IP but irrespective of the target hostname, over a 15 minute window."
+    severity = "LOW"
+
+  events:
+    $win_auth_failure.metadata.event_type = "USER_LOGIN"
+    $win_auth_failure.metadata.product_name = "Microsoft-Windows-Security-Auditing"
+    $win_auth_failure.security_result.action = "BLOCK"
+
+    //match variables
+    $win_auth_failure.principal.hostname = $source    
+    $win_auth_failure.target.user.userid = $username    
+
+    //exclusion filters
+    // - exclude Computer Accounts
+    not $win_auth_failure.target.user.userid = /^.*\$$/
+
+  match:
+    $source over 15m
+
+  outcome:
+    $risk_score = max(
+        // Logon Types
+        if ( $win_auth_failure.extensions.auth.auth_details = "2", 50) + 
+        if ( $win_auth_failure.extensions.auth.auth_details = "10", 50) + 
+        if ( $win_auth_failure.extensions.auth.auth_details = "3", 20) +
+        if ( not $win_auth_failure.extensions.auth.auth_details = /2|3|10/, 10) +
+
+        // Status / Substatus
+        // - user name is correct but the password is wrong
+        if ( $win_auth_failure.security_result.summary = "User logon with misspelled or bad password" nocase, 20) +
+        // - user name does not exist
+        if ( $win_auth_failure.security_result.summary = "User logon with misspelled or bad user account" nocase, 10)
+    )  
+
+    // list of impacted brute force accounts
+    $user_id_distinct_list = array_distinct($win_auth_failure.target.user.userid) 
+
+  condition:
+    $win_auth_failure and #username > 0
+}

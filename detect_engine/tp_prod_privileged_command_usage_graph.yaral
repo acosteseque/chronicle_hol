@@ -1,0 +1,42 @@
+rule tp_prod_privileged_command_usage_graph {
+  meta:
+    author = "Cymbal Labs"
+    description = "Detects privileged command activity on production services. Detections with a Risk Score of above 80 *will* raise a p1 ticket."
+    severity = "High"
+
+  events:
+    $prod.metadata.event_type = "USER_RESOURCE_ACCESS"
+    $prod.metadata.vendor_name = "Cymbal"
+    $prod.metadata.product_name = "Cymbal Audit Daemon"
+    $prod.metadata.product_event_type = "Shell Activity"
+    $prod.security_result.action = "ALLOW"
+    $prod.principal.user.userid = $user
+    
+    $context.graph.metadata.vendor_name = "Cymbal"
+    $context.graph.metadata.product_name = "CMDB"
+    $context.graph.metadata.entity_type = "USER"
+    $context.graph.entity.user.userid = $user
+
+  match:
+    $user over 5m
+
+  outcome:
+    $risk_score = max(
+        if ( $prod.metadata.product_event_type = "Shell Activity", 50) +
+        // Privileged commands we wish to risk model
+        // - i.e., not all commands in the 'Cymbal_highly_privileged_commands' reference list  
+        if ( $prod.target.file.full_path = "/sbin/cymbal_sql", 20) +
+        if ( $prod.target.file.full_path = "/sbin/cymbal_backend", 10) +
+        if ( $prod.target.file.full_path = "/sbin/cymbal_frontend", 5) +
+        // Monitored users & groups who can have access
+        if ( $context.graph.entity.user.department = "IT", 10) +
+        if ( $context.graph.entity.user.department = "SRE", 5) +
+        // -- empty values would denote Cymbal CMDB is not populating correctly, not expected
+        if ( $context.graph.entity.user.department = "", 20) + 
+        // Raise Risk for Contractors - not expected behaviour       
+        if ( $context.graph.entity.user.title = /contractor/ nocase , 20)                
+    )
+
+  condition:
+    $prod and $context
+}

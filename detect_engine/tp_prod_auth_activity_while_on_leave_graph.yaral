@@ -1,0 +1,49 @@
+rule tp_prod_auth_activity_while_on_leave_graph {
+  meta:
+    author = "Cymbal Labs"
+    description = "Detects auth activity for users reported on annual leave."
+    severity = "Informational"
+
+  events:
+    $auth.metadata.event_type = "USER_LOGIN"
+    $auth.metadata.vendor_name = "Cymbal"
+    $auth.metadata.product_name = "Cymbal SSO"
+    $auth.security_result.action = "ALLOW"
+    $auth.target.user.userid = $userid    
+
+    $auth.metadata.event_timestamp.seconds > 
+        $context.graph.entity.user.time_off.interval.start_time.seconds
+
+    $auth.metadata.event_timestamp.seconds <
+        $context.graph.entity.user.time_off.interval.end_time.seconds
+
+    $context.graph.metadata.vendor_name = "Cymbal"
+    $context.graph.metadata.product_name = "CMDB"
+    $context.graph.metadata.entity_type = "USER"
+    $context.graph.entity.user.userid = $userid
+    $context.graph.entity.user.time_off.interval.start_time.seconds > 0
+    $context.graph.entity.user.time_off.interval.end_time.seconds > 0 
+
+  match:
+    $userid over 15m
+
+  outcome:
+    $risk_score = max(
+        if ( $auth.metadata.event_type = "USER_LOGIN", 10) +
+        // Monitor audited and/or high risk groups 
+        if ( 
+            $context.graph.entity.user.department = "Chief Chaos Officer" or
+            $context.graph.entity.user.department = "Office of the Chief Executive Doogler"            
+            , 25
+        ) +
+        // - raise risk level if logging in on non-company device
+        if ( 
+            not $context.graph.relations.entity_type  = "ASSET" and        
+            not $context.graph.relations.relationship = "OWNS"
+            , 25
+        )
+    )    
+ 
+  condition:
+    $auth and $context
+}

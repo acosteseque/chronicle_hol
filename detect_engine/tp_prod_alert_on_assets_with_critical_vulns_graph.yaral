@@ -1,0 +1,40 @@
+rule tp_prod_alert_on_assets_with_critical_vulns_graph {
+  meta:
+    author = "Cymbal Labs"
+    description = "Detects alerts against assets with active vulns as reported by Cymbal Vuln Scanner."
+    severity = "High"
+
+  events:
+    $alert.metadata.event_type = "SCAN_HOST"
+    $alert.metadata.vendor_name = "Cymbal"
+    $alert.metadata.product_name = "Endpoint Protection"
+    $alert.principal.ip = $ip
+
+    $vuln.graph.metadata.vendor_name = "Cymbal"
+    $vuln.graph.metadata.product_name = "CMDB"
+    $vuln.graph.metadata.entity_type = "ASSET"
+    $vuln.graph.entity.asset.deployment_status = "ACTIVE"
+    $vuln.graph.entity.asset.category = "SERVER"
+    $vuln.graph.entity.asset.ip = $ip
+
+  match:
+    $ip over 15m
+
+  outcome:
+    $risk_score = max(
+        // CVE Score adjustments
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 1, 10) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 2, 20) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 3, 30) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 4, 40) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 5, 50) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 6, 60) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 7, 70) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 8, 80) +                                                     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 9, 90) +     
+        if ( $vuln.graph.entity.asset.vulnerabilities.cvss_base_score = 10, 100)         
+    )  
+
+  condition:
+    $alert and $vuln 
+}

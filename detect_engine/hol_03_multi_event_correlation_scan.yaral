@@ -1,0 +1,17 @@
+rule hol_03_multi_event_correlation_scan {
+  meta:
+	author = "Raju"
+    description = "Multi-Event Correlation - Scan Activities"
+    severity = "Medium"
+
+  events:
+	$e1.target.ip = $target_ip
+	$e1.principal.ip = $attacker_ip
+	$e1.target.port = $target_port
+
+  match:
+	$attacker_ip, $target_ip over 5m
+
+  condition:
+	#target_port > 50
+}

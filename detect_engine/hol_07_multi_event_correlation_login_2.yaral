@@ -1,0 +1,25 @@
+rule hol_07_multi_event_correlation_login_2 {
+  meta:
+	  author = "Raju"
+    description = "Multi-Event Correlation - Multiple Occurrences"
+    severity = "Medium"
+
+  events:
+	  $fail.target.user.userid = $user
+	  $fail.target.ip = $target_ip
+    $fail.principal.ip = $device
+	  $fail.metadata.event_type = "USER_LOGIN"
+	  $fail.security_result.action = "BLOCK"
+
+    $success.target.user.userid = $user
+    $success.target.ip = $target_ip
+    $success.principal.ip = $device
+	  $success.metadata.event_type = "USER_LOGIN"
+	  $success.security_result.action = "ALLOW"
+
+  match:
+	  $user, $target_ip, $device over 5m
+
+  condition:
+	  #fail > 3 and $success
+}

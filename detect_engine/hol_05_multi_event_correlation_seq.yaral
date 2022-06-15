@@ -1,0 +1,26 @@
+rule hol_05_multi_event_correlation_seq {
+  meta:
+	  author = "Raju"
+    description = "Multi-Event Correlation - Sequences"
+    severity = "Medium"
+
+  events:
+    $create.target.user.userid = $user
+    $create.metadata.event_type = "USER_CREATION"
+
+    $login.target.user.userid = $user
+    $login.metadata.event_type = "USER_LOGIN"
+    
+    $delete.target.user.userid = $user
+    $delete.metadata.event_type = "USER_DELETION"
+    
+    $create.metadata.event_timestamp.seconds <= $login.metadata.event_timestamp.seconds
+
+    $login.metadata.event_timestamp.seconds <= $delete.metadata.event_timestamp.seconds
+
+  match:
+	  $user over 24h
+
+  condition:
+	  $create and $login and $delete
+}

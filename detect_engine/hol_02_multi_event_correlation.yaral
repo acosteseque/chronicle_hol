@@ -1,0 +1,22 @@
+rule hol_02_multi_event_correlation {
+  meta:
+	author = "Raju"
+    description = "Multi-Event Correlation - Multiple Occurrences"
+    severity = "Medium"
+
+  events:
+	$e1.target.user.userid= $user
+	$e1.metadata.event_type = "USER_LOGIN"
+    // on PROCESS_LAUNCH
+    // not $e1.metadata.vendor_name = "Microsoft"
+    // $e1.metadata.product_event_type = "4688"
+    // $e1.metadata.event_type = "PROCESS_LAUNCH"
+    // $e1.target.process.file.full_path = $process
+
+  match:
+    $user over 30m
+
+  condition:
+    $e1
+    // #e1 > 3
+}
