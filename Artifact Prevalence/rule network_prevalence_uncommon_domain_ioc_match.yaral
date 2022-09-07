@@ -1,0 +1,36 @@
+rule network_prevalence_uncommon_domain_ioc_match {
+  meta:
+    author = "Chronicle Security"
+    description = "Lookup Network DNS queries against Entity Graph for low prevalence domains with a matching IOC entry."
+    severity = "MEDIUM"
+
+  events:
+    $e.metadata.event_type = "NETWORK_DNS"
+    $e.network.dns.questions.name = $hostname
+    //only match FQDNs, e.g., exclude chrome dns access tests and other internal hosts
+    $e.network.dns.questions.name = /(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]/
+  
+    //prevalence entity graph lookup
+    $p.graph.metadata.entity_type = "DOMAIN_NAME"
+    $p.graph.entity.domain.prevalence.rolling_max <= 3
+    $p.graph.entity.domain.name = $hostname
+    
+    //ioc entity graph lookup
+    $i.graph.metadata.vendor_name = "ET_PRO_IOC"
+    $i.graph.metadata.entity_type = "DOMAIN_NAME"
+    $i.graph.entity.hostname = $hostname
+  
+  match:
+    $hostname over 10m
+  
+  outcome:
+    $risk_score = max(
+      //increment risk score based upon rolling_max prevalence
+      if ( $p.graph.entity.domain.prevalence.rolling_max = 3, 50) +
+      if ( $p.graph.entity.domain.prevalence.rolling_max = 2, 70) +
+      if ( $p.graph.entity.domain.prevalence.rolling_max = 1, 90)
+    )
+
+  condition:
+    $e and $p and $i
+}

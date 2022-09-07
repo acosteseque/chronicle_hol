@@ -1,0 +1,39 @@
+rule network_prevalence_low_prevalence_domain_access {
+  meta:
+    author = "Chronicle Security"
+    description = "Detects access to a low prevalence domain.  Requires baseline of prevalence be in place for effective deployment."
+    severity = "LOW"
+
+  events:
+    $e.metadata.event_type = "NETWORK_HTTP"
+    $e.principal.ip = $ip
+    // filter out URLs with RFC1918 IP addresses, i.e., internal assets
+    not re.regex($e.target.hostname, `(127(?:\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$)|(10(?:\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$)|(192\.168(?:\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2}$)|(172\.(?:1[6-9]|2\d|3[0-1])(?:\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){2})`)
+    // only match valid FQDN, filter out background non-routable noise
+    re.regex($e.target.hostname, `(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]`)
+    $domainName = $e.target.hostname
+    
+    //join event ($e) to entity graph ($d)
+    $e.target.hostname = $d.graph.entity.domain.name
+
+    $d.graph.metadata.entity_type = "DOMAIN_NAME"
+    // tune prevalence as fits your results
+    $d.graph.entity.domain.prevalence.rolling_max <= 10
+
+  match:
+    $ip over 1h
+
+  outcome:
+    $risk_score = max(
+      // increment risk score based upon rolling_max prevalence
+      if ( $d.graph.entity.domain.prevalence.rolling_max >= 10, 10) +
+      if ( $d.graph.entity.domain.prevalence.rolling_max >= 2 and $d.graph.entity.domain.prevalence.rolling_max <= 9 , 20) +
+      if ( $d.graph.entity.domain.prevalence.rolling_max = 1, 30)
+    )
+  
+    $domain_list = array_distinct($domainName)
+    $domain_count = count_distinct($domainName)
+
+  condition:
+    $e and $d
+}

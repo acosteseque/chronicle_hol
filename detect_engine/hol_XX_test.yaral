@@ -1,0 +1,18 @@
+rule hol_01_single_event {
+  meta:
+    // https://docs.google.com/presentation/d/1hx3y8OtQJ3ax4PYaCCrSoxAow2qiI-ls6OtF-E-gtrA
+	  author = "Raju"
+    description = "Single Event Match example"
+    severity = "Medium"
+
+  events:
+    $e1.principal.user.email_addresses = "admin@cymbal.com" nocase
+    // $e1.metadata.product_event_type = "4688"
+    // $e1.metadata.event_type = "PROCESS_LAUNCH"
+    // $e1.metadata.event_type = "USER_CREATION"
+    // $e1.target.process.file.full_path = "C:\\Program Files (x86)\\Google\\Update\\GoogleUpdate.exe"
+
+  condition:
+	  $e1
+    // #e1 > 0
+}
